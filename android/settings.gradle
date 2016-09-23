@@ -1,0 +1,3 @@
+rootProject.name = 'rocketRTC'
+
+include ':app'
