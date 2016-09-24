@@ -13,17 +13,18 @@ import {
 
 var WebRTC = require('react-native-webrtc');
 var {
-  RTCPeerConnection,
-  RTCMediaStream,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  RTCView,
-  MediaStreamTrack,
-  getUserMedia,
+   RTCPeerConnection,
+   RTCMediaStream,
+   RTCIceCandidate,
+   RTCSessionDescription,
+   RTCView,
+   MediaStreamTrack,
+   getUserMedia,
 } = WebRTC;
-
+var configuration = {"iceServers": [{"url": "stun:stun.l.google.com:19302"}]};
+var pc = new RTCPeerConnection(configuration);
 window.navigator.userAgent = "react-native";
-require("./bkrtc.js");
+require("./bkclient/index.js");
 const io = require('socket.io-client/socket.io');
 var container;
 var peer = null;
@@ -57,7 +58,10 @@ var config = {
                     username: 'bkrtc_turn'
 
 						      }
-						   ]
+						   ],
+  pc: RTCPeerConnection,
+  candidate: RTCIceCandidate,
+  rsd: RTCSessionDescription
 };
 
 
@@ -68,9 +72,9 @@ function handle_message(service) {
 		// add_log(data);
 	});
 
-	service.event.on("remote_stream", function(stream, peer) {
-    console.log("remote_stream");
-		add_stream_video(stream);
+	service.event.on("remote_stream", function(stream, peer_id) {
+    console.log("service remote_stream");
+		container.setState({remoteViewSrc: stream.toURL()});
 	});
 
 	service.event.on("end_remote_stream", function(peer_id) {
@@ -80,8 +84,9 @@ function handle_message(service) {
 	});
 
 	service.event.on("MAKE_CALL", function(data) {
-    console.log("MAKE_CALL");
+    console.log("service MAKE_CALL");
     getLocalStream(true,function(stream) {
+
       service.stream = stream
       service.accept_call(data);
     },
@@ -91,11 +96,6 @@ function handle_message(service) {
 	});
 }
 
-
-
-function add_stream_video(stream) {
-  container.setState({remoteViewSrc: stream.toURL()});
-}
 
 function getLocalStream(isFront, callback) {
   MediaStreamTrack.getSources(sourceInfos => {
@@ -150,15 +150,20 @@ register(){
   	handle_message(service);
 },
 call(){
-    console.log("call");
-    var peer_name = this.state.call_name;
+  console.log("call");
+  var peer_name = this.state.call_name;
+  getLocalStream(true, function(stream) {
+    service.stream = stream;
+    container.setState({selfViewSrc: stream.toURL()});
     service.call_user(peer_name, function(error) {
         if(error) {
+            console.log("call errror");
           console.log(error);
           return;
         }
       });
-  },
+  });
+},
 cell(){
   service.get_user_media(options, function(stream) {
       console.log(stream);
