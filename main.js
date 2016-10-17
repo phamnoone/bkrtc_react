@@ -10,6 +10,7 @@ import {
   TextInput,
   ListView,
 } from 'react-native';
+import InCallManager from 'react-native-incall-manager';
 
 var WebRTC = require('react-native-webrtc');
 var {
@@ -21,17 +22,14 @@ var {
    MediaStreamTrack,
    getUserMedia,
 } = WebRTC;
-var configuration = {"iceServers": [{"url": "stun:stun.l.google.com:19302"}]};
-var pc = new RTCPeerConnection(configuration);
+
 window.navigator.userAgent = "react-native";
-require("./bkclient/index.js");
+require("./bkrtc.js");
 const io = require('socket.io-client/socket.io');
 var container;
 var peer = null;
 var service = null;
 let localStream;
-
-
 var video_constraints = {
   mandatory: {
    	minWidth: 320,
@@ -42,7 +40,6 @@ var video_constraints = {
   },
   optional:[]
 };
-
 var options = {
 	video: video_constraints,
 	audio: true
@@ -51,17 +48,19 @@ var options = {
 var config = {
   HOST: "https://bkmedia.ga:8212/test",
   ICE_SERVERS: [
-						      { url: 'stun:stun-turn.org:3478'},
+						      { url: 'turn:162.218.209.70:3478'},
 						      {
-                    url: 'turn:162.218.209.70:3478',
-                    credential: 'bkrtc_test_turn_2016',
-                    username: 'bkrtc_turn'
-
+						        url: 'turn:162.218.209.70:3478',
+						        credential: 'bkrtc_test_turn_2016@A',
+						        username: 'bkrtc_turn'
 						      }
 						   ],
-  pc: RTCPeerConnection,
-  candidate: RTCIceCandidate,
-  rsd: RTCSessionDescription
+  CONFIG_MOBILE_RTC: {
+    RTCPeerConnection: RTCPeerConnection,
+    RTCSessionDescription: RTCSessionDescription,
+    RTCIceCandidate: RTCIceCandidate,
+    getUserMedia: getUserMedia
+  }
 };
 
 
@@ -146,11 +145,16 @@ register(){
     var bk_peer = bkrtc.create();
     bk_peer.config = config;
     peer = bkrtc.init(bk_peer, "123", {socket: io, path: '/videoconference'});
-  	service = peer.stream_media(peer_name);
+  	// service = peer.data.stream_media(peer_name);
+    service = peer.data.stream_media();
+    service.initialize_server_connection();
+      service.register(peer_name);
   	handle_message(service);
 },
 call(){
   console.log("call");
+  // InCallManager.start({media: 'audio'});
+  InCallManager.setForceSpeakerphoneOn(true);
   var peer_name = this.state.call_name;
   getLocalStream(true, function(stream) {
     service.stream = stream;
